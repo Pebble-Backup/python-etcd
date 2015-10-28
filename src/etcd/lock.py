@@ -47,7 +47,7 @@ class Lock(object):
             _log.debug("Lock not taken")
             return False
         try:
-            self.client.read(self.lock_key)
+            self.client.read(self.lock_key, quorum=True)
             return True
         except etcd.EtcdKeyNotFound:
             _log.warn("Lock was supposedly taken, but we cannot find it")
@@ -139,14 +139,14 @@ class Lock(object):
     def _find_lock(self):
         if self._sequence:
             try:
-                res = self.client.read(self.lock_key)
+                res = self.client.read(self.lock_key, quorum=True)
                 self._uuid = res.value
                 return True
             except etcd.EtcdKeyNotFound:
                 return False
         elif self._uuid:
             try:
-                for r in self.client.read(self.path, recursive=True).leaves:
+                for r in self.client.read(self.path, recursive=True, quorum=True).leaves:
                     if r.value == self._uuid:
                         self._set_sequence(r.key)
                         return True
@@ -156,7 +156,7 @@ class Lock(object):
 
     def _get_locker(self):
         results = [res for res in
-                   self.client.read(self.path, recursive=True).leaves]
+                   self.client.read(self.path, recursive=True, quorum=True).leaves]
         if not self._sequence:
             self._find_lock()
         l = sorted([r.key for r in results])
